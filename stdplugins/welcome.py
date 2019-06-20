@@ -27,22 +27,21 @@ async def _(event):
                     )
                 except Exception as e:  # pylint:disable=C0103,W0703
                     logger.warn(str(e))  # pylint:disable=E0602
-            user_s = await event.get_users()
-            for a_user in user_s:
-                current_saved_welcome_message = cws.custom_welcome_message
-                mention = "[{}](tg://user?id={})".format(a_user.first_name, a_user.id)
-                current_message = await event.reply(
-                    current_saved_welcome_message.format(mention=mention)
-                )
-                update_previous_welcome(event.chat_id, current_message.id)
+            a_user = await event.get_user()
+            current_saved_welcome_message = cws.custom_welcome_message
+            mention = "[{}](tg://user?id={})".format(a_user.first_name, a_user.id)
+            current_message = await event.reply(
+                current_saved_welcome_message.format(mention=mention)
+            )
+            update_previous_welcome(event.chat_id, current_message.id)
 
 
-@borg.on(admin_cmd("savewelcome (.*)"))  # pylint:disable=E0602
+@borg.on(admin_cmd("savewelcome"))  # pylint:disable=E0602
 async def _(event):
     if event.fwd_from:
         return
-    input_str = event.pattern_match.group(1)
-    add_welcome_setting(event.chat_id, input_str, True, 0)
+    input_str = event.text.split(None, 1)
+    add_welcome_setting(event.chat_id, input_str[1], True, 0)
     await event.edit("Welcome note saved. ")
 
 

@@ -17,7 +17,7 @@ borg.storage.recvd_messages = {}  # pylint:disable=E0602
 @borg.on(events.NewMessage(outgoing=True))  # pylint:disable=E0602
 async def set_not_afk(event):
     current_message = event.message.message
-    if ".afk" not in current_message and "yes" in borg.storage.USER_AFK:  # pylint:disable=E0602
+    if Config.COMMAND_HAND_LER + "afk" not in current_message and "yes" in borg.storage.USER_AFK:  # pylint:disable=E0602
         borg.storage.USER_AFK = {}  # pylint:disable=E0602
         borg.storage.afk_time = None  # pylint:disable=E0602
         # pylint:disable=E0602
@@ -30,15 +30,13 @@ async def set_not_afk(event):
             current_message = borg.storage.recvd_messages[chat_id]
             user_id = current_message.from_id
             message_id = current_message.id
-            # check_condition = str(chat_id).startswith("-")
-            # chat_id, _ = resolve_id(chat_id)
-            # https://t.me/DeepLink/21
-            # if not check_condition:
-            #     recvd_messages += "👉 tg://openmessage?chat_id={}&message_id={} \n".format(chat_id, message_id)
-            # else:
-            #     recvd_messages += "👉 https://t.me/c/{}/{} \n\n".format(chat_id, message_id)
             chat_id, _ = resolve_id(chat_id)
-            recvd_messages += "👉 tg://openmessage?chat_id={}&message_id={} \n".format(chat_id, message_id)
+            if isinstance(_, types.PeerUser):
+                recvd_messages += f"👉 [{chat_id}](tg://user?id={chat_id})"
+                # sadly, there is no way to goto a particular message by a user,
+                # after the 5.5 Android update
+            else:
+                recvd_messages += f"👉 https://t.me/c/{chat_id}/{message_id} \n"
         try:
             if recvd_messages != "You received the following messages: \n":
                 await borg.send_message(  # pylint:disable=E0602
@@ -105,6 +103,9 @@ async def on_afk(event):
     if "afk" in current_message_text:
         # userbot's should not reply to other userbot's
         # https://core.telegram.org/bots/faq#why-doesn-39t-my-bot-see-messages-from-other-bots
+        return False
+    if event.chat_id in Config.UB_BLACK_LIST_CHAT:
+        # don't reply if chat is added to blacklist
         return False
     if borg.storage.USER_AFK and not (await event.get_sender()).bot:  # pylint:disable=E0602
         reason = borg.storage.USER_AFK["yes"]  # pylint:disable=E0602

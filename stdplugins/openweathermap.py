@@ -1,9 +1,9 @@
 """Get weather data using OpenWeatherMap
 Syntax: .weather <Location> """
 
-import requests
+import aiohttp
 import time
-from telethon import events
+from datetime import tzinfo, datetime
 from uniborg.util import admin_cmd
 
 
@@ -13,8 +13,14 @@ async def _(event):
         return
     sample_url = "https://api.openweathermap.org/data/2.5/weather?q={}&APPID={}&units=metric"
     input_str = event.pattern_match.group(1)
-    response_api = requests.get(sample_url.format(input_str, Config.OPEN_WEATHER_MAP_APPID)).json()
+    async with aiohttp.ClientSession() as session:
+        response_api_zero = await session.get(sample_url.format(input_str, Config.OPEN_WEATHER_MAP_APPID))
+    response_api = await response_api_zero.json()
     if response_api["cod"] == 200:
+        country_code = response_api["sys"]["country"]
+        country_time_zone = int(response_api["timezone"])
+        sun_rise_time = int(response_api["sys"]["sunrise"]) + country_time_zone
+        sun_set_time = int(response_api["sys"]["sunset"]) + country_time_zone
         await event.edit(
             """{}
 **Temperature**: {}°С
@@ -23,8 +29,8 @@ async def _(event):
 **Humidity**: {}%
 **wind**: {}m/s
 clouds: {}hpa
-**Sunrise**: {} UTC
-**Sunset**: {} UTC""".format(
+**Sunrise**: {} {}
+**Sunset**: {} {}""".format(
                 input_str,
                 response_api["main"]["temp"],
                 response_api["main"]["temp_min"],
@@ -33,8 +39,10 @@ clouds: {}hpa
                 response_api["wind"]["speed"],
                 response_api["clouds"]["all"],
                 # response_api["main"]["pressure"],
-                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(response_api["sys"]["sunrise"])),
-                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(response_api["sys"]["sunset"]))
+                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(sun_rise_time)),
+                country_code,
+                time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(sun_set_time)),
+                country_code
             )
         )
     else:
